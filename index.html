@@ -46,7 +46,7 @@ label{font-size:13px;color:var(--mu);display:block;margin-bottom:3px}
 <div id="drawer"></div>
 <script>
 const K='orelavoro.v1';
-const APP_VERSION='1.2.0';
+const APP_VERSION='1.2.1';
 let S={projects:[],cfg:{full:12,half:6,meal:5,bonus:1}},cur=null,edit=null,view='home',showSet=false,showFee=false,showImg=false,showEH=false,showCrew=false,sec=null,cEdit=null,confM=-1,cdE=null,cdf={t:'full',dia:false},confCd='',confDb='',dbOpen=false,dbSel=[],ovOpen=-1,ovE=null,ovf={t:'full',dia:false},confP=false,confD=-1;
 try{const r=localStorage.getItem(K);if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
 const lsSave=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
@@ -326,7 +326,17 @@ const cloudOn=()=>!!(FBC.apiKey&&FBC.projectId);
 const em=e=>/fetch|abort|network/i.test((e&&e.message)||'')?L('No internet connection.'):L('Error: ')+((e&&e.message)||e);
 const tcode=()=>Array.from(crypto.getRandomValues(new Uint32Array(10)),n=>n%10).join('');
 const rid=()=>{const a=new Uint8Array(20);crypto.getRandomValues(a);return Array.from(a,b=>'abcdefghijklmnopqrstuvwxyz0123456789'[b%36]).join('')};
-const me=()=>(S.profile&&S.profile.first)||'';
+
+function migrate(){const base={full:12,half:6,meal:5,bonus:1};S.cfg=Object.assign({},base,S.cfg||{});S.projects=Array.isArray(S.projects)?S.projects:[];
+  S.projects.forEach(p=>{p.days=Array.isArray(p.days)?p.days:[];p.cfg=Object.assign({},base,S.cfg,p.cfg||{});
+    const f=Object.assign({day:0,extra:0,diaOn:false,dia:0,irpef:0},p.fee||{});
+    p.days.forEach(d=>{if(!d.id)d.id=rid();if(d.dia===undefined)d.dia=!!f.diaOn;if(!d.type)d.type='full'});
+    f.diaOn=false;p.fee=f;
+    if(!Array.isArray(p.crew))p.crew=[];
+    p.crew.forEach(m=>{if(!m.id)m.id=rid();if(!m.mode)m.mode='all';if(!Array.isArray(m.days))m.days=[];if(!m.ov)m.ov={};
+      m.days.forEach(d=>{if(!d.id)d.id=rid();if(d.dia===undefined)d.dia=false;if(!d.type)d.type='full'})})});
+  if(!Array.isArray(S.crewDb))S.crewDb=[];lsSave()}
+migrate();const me=()=>(S.profile&&S.profile.first)||'';
 const sv=v=>({stringValue:String(v)}),iv=v=>({integerValue:String(v)});
 async function tmo(url,opt){const c=new AbortController(),t=setTimeout(()=>c.abort(),15000);try{return await fetch(url,Object.assign({signal:c.signal},opt))}finally{clearTimeout(t)}}
 async function tok(){const a=S.auth||{};if(a.id&&Date.now()<a.exp-60000)return a.id;
@@ -442,6 +452,7 @@ async function bkRestore(){const c=bkNorm($('#bkc')&&$('#bkc').value);if(!c){toa
   try{const r=await bkPull(c);pendImp={o:r.o,code:c,src:'online',t:r.t};drawer()}catch(e){toast(/^(Code not found|Incomplete backup|Invalid backup)$/.test(e.message)?L(e.message):em(e))}}
 function bkApply(){if(!pendImp)return;const o=pendImp.o,keep=S.auth;
   S=Object.assign({projects:[],cfg:{full:12,half:6,meal:5,bonus:1}},o);
+  migrate();
   if(keep)S.auth=keep;
   if(pendImp.code)S.bk={code:pendImp.code,on:true};else if(!o.bk)delete S.bk;
   pendImp=null;cur=null;edit=null;view='home';lsSave();menuOpen=false;startSync();render();toast(L('Data restored.'))}
